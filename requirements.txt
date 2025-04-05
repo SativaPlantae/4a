@@ -6,3 +6,8 @@ faiss-cpu
 PyPDF2
 tiktoken
 pypdf
+geopandas
+shapely
+pyproj
+fiona
+rtree
