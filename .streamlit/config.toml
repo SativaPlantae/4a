@@ -3,6 +3,3 @@ base = "light"
 
 [server]
 headless = true
-
-[pages]
-main = "app.py"
