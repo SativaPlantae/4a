@@ -1,23 +1,17 @@
 import streamlit as st
 import geopandas as gpd
 from shapely.geometry import Point
-from pyproj import Transformer
 import os
 
 st.set_page_config(page_title="Georreferenciamento", page_icon="🌍")
 st.title("🌍 Verificador de Coordenadas Geográficas")
-st.markdown("Insira uma coordenada em **UTM zona 22S** para verificar onde ela está e se há alguma restrição.")
+st.markdown("Insira uma coordenada em **UTM zona 22S - SIRGAS 2000 (EPSG:31982)** para verificar onde ela está e se há alguma restrição.")
 
 col1, col2 = st.columns(2)
 with col1:
     utm_x = st.number_input("Coordenada UTM (Leste - X)", value=0.0, format="%.3f")
 with col2:
     utm_y = st.number_input("Coordenada UTM (Norte - Y)", value=0.0, format="%.3f")
-
-def utm22s_para_latlon(x, y):
-    transformer = Transformer.from_crs("EPSG:31982", "EPSG:4326", always_xy=True)
-    lon, lat = transformer.transform(x, y)
-    return lat, lon
 
 def checar_intersecoes(ponto_gdf, pasta):
     resultados = {}
@@ -28,7 +22,7 @@ def checar_intersecoes(ponto_gdf, pasta):
                 nome = os.path.splitext(file)[0]
                 try:
                     gdf = gpd.read_file(caminho)
-                    gdf = gdf.to_crs("EPSG:4326")
+                    gdf = gdf.to_crs("EPSG:31982")  # SIRGAS 2000 / UTM 22S
                     intersecta = gdf.intersects(ponto_gdf.geometry.iloc[0]).any()
                     resultados[nome] = "✅ Sim" if intersecta else "❌ Não"
                 except Exception as e:
@@ -39,10 +33,9 @@ if st.button("🔍 Verificar Localização"):
     if utm_x == 0 or utm_y == 0:
         st.warning("Por favor, insira coordenadas válidas.")
     else:
-        lat, lon = utm22s_para_latlon(utm_x, utm_y)
-        st.markdown(f"**📌 Latitude/Longitude:** {lat:.6f}, {lon:.6f}")
+        st.markdown(f"**📌 Coordenada UTM (SIRGAS 2000 / zona 22S):** {utm_x}, {utm_y}")
 
-        ponto = gpd.GeoDataFrame(geometry=[Point(lon, lat)], crs="EPSG:4326")
+        ponto = gpd.GeoDataFrame(geometry=[Point(utm_x, utm_y)], crs="EPSG:31982")
 
         st.subheader("📍 Localização Administrativa")
         admin = checar_intersecoes(ponto, "camadas/Administrativa")
