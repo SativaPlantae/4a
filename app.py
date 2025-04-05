@@ -5,15 +5,16 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.chat_models import ChatOpenAI
-from langchain.chains import RetrievalQA
+from langchain.chains import ConversationalRetrievalChain
+from langchain.memory import ConversationBufferMemory
 from langchain.prompts import PromptTemplate
 
-# 🔐 Chave da OpenAI via variável de ambiente
+# 🔐 Pega a chave da OpenAI
 openai_api_key = os.getenv("OPENAI_API_KEY")
 
-# 🚀 Carrega e prepara o documento e a cadeia de QA
+# 🔄 Carrega o documento e monta a base vetorial
 @st.cache_resource
-def carregar_qa_chain():
+def carregar_chain_com_memoria():
     loader = PyPDFLoader("40.pdf")
     documentos = loader.load()
 
@@ -24,68 +25,71 @@ def carregar_qa_chain():
     retriever = vectorstore.as_retriever()
 
     prompt_template = PromptTemplate(
-        input_variables=["context", "question"],
+        input_variables=["chat_history", "context", "question"],
         template="""
-Você é um assistente virtual treinado com base em um documento técnico de licenciamento ambiental. Seu estilo é natural, amigável e direto, como se estivesse conversando com alguém em um chat. 
+Você é um assistente virtual treinado com base em um documento técnico de licenciamento ambiental. Seu estilo é natural, amigável e direto, como se estivesse conversando com alguém em um chat.
 
-Quando responder, use uma linguagem simples e acessível, como o ChatGPT faria. Seja claro, mas não precisa ser excessivamente formal. Evite repetir demais o conteúdo da pergunta.
+Use as mensagens anteriores (chat_history) e o contexto extraído do documento para responder com clareza, mantendo uma linguagem simples e objetiva.
 
-Se a resposta não estiver presente no documento, diga algo como: "Hmm, isso não está muito claro por aqui, mas posso tentar ajudar com base no que tenho."
-
-Se a pergunta estiver fora do escopo do documento, diga isso de forma simpática.
+Se a resposta não estiver clara no documento, diga algo como: "Hmm, isso não está muito claro por aqui, mas posso tentar ajudar com base no que tenho."
 
 -------------------
+Histórico do Chat:
+{chat_history}
+
+Contexto:
 {context}
 
 Pergunta: {question}
 Resposta:"""
     )
 
-    llm = ChatOpenAI(
-        model="gpt-4o-mini",
-        temperature=0.5,
-        max_tokens=500,
-        openai_api_key=openai_api_key
-    )
+    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
 
-    return RetrievalQA.from_chain_type(
-        llm=llm,
+    chain = ConversationalRetrievalChain.from_llm(
+        llm=ChatOpenAI(model="gpt-4o-mini", temperature=0.5, openai_api_key=openai_api_key),
         retriever=retriever,
-        chain_type="stuff",
-        chain_type_kwargs={"prompt": prompt_template}
+        memory=memory,
+        combine_docs_chain_kwargs={"prompt": prompt_template}
     )
 
-# ⚙️ Configuração da página
+    return chain
+
+# ⚙️ Configuração do app
 st.set_page_config(page_title="Chatbot da AD nº 43/2024", page_icon="🤖")
 st.title("🤖 Chatbot da AD nº 43/2024")
 st.markdown("Converse sobre o conteúdo da Autorização Direta 📄")
 
-# 💬 Inicializa o histórico de conversa
+# Inicializa o histórico visual (interface)
 if "mensagens" not in st.session_state:
     st.session_state.mensagens = []
 
-# 🔄 Exibe o histórico completo
+# Inicializa a cadeia com memória (uma vez por sessão)
+if "qa_chain" not in st.session_state:
+    st.session_state.qa_chain = carregar_chain_com_memoria()
+
+# Exibe o histórico de forma visual no estilo de chat
 for remetente, mensagem in st.session_state.mensagens:
     with st.chat_message("user" if remetente == "Você" else "assistant"):
         st.markdown(mensagem)
 
-# 🧠 Campo de input estilo chat (sempre visível no final)
+# Campo de input sempre no final
 user_input = st.chat_input("Digite sua pergunta aqui...")
 
 if user_input:
-    # Adiciona pergunta ao histórico
-    st.session_state.mensagens.append(("Você", user_input))
+    # Exibe a pergunta no chat
     with st.chat_message("user"):
         st.markdown(user_input)
+    st.session_state.mensagens.append(("Você", user_input))
 
+    # Gera resposta com memória
     with st.spinner("Consultando o documento..."):
         try:
-            qa_chain = carregar_qa_chain()
-            resposta = qa_chain.run(user_input)
+            resposta = st.session_state.qa_chain.run(user_input)
         except Exception as e:
             resposta = f"⚠️ Ocorreu um erro: {e}"
 
-    # Adiciona resposta ao histórico
-    st.session_state.mensagens.append(("Chatbot", resposta))
+    # Exibe e salva resposta
     with st.chat_message("assistant"):
         st.markdown(resposta)
+    st.session_state.mensagens.append(("Chatbot", resposta))
