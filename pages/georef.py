@@ -15,7 +15,7 @@ with col2:
     utm_y = st.number_input("Coordenada UTM (Norte - Y)", value=0.0, format="%.3f")
 
 def utm22s_para_latlon(x, y):
-    transformer = Transformer.from_crs("EPSG:32722", "EPSG:4326", always_xy=True)
+    transformer = Transformer.from_crs("EPSG:31982", "EPSG:4326", always_xy=True)
     lon, lat = transformer.transform(x, y)
     return lat, lon
 
