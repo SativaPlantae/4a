@@ -38,17 +38,17 @@ if st.button("🔍 Verificar Localização"):
         ponto = gpd.GeoDataFrame(geometry=[Point(utm_x, utm_y)], crs="EPSG:31982")
 
         st.subheader("📍 Localização Administrativa")
-        admin = checar_intersecoes(ponto, "camadas/Administrativa")
+        admin = checar_intersecoes(ponto, "camadas/administrativo")
         for nome, status in admin.items():
             st.write(f"**{nome}:** {status}")
 
         st.subheader("🛠️ Licenciamento")
-        lic = checar_intersecoes(ponto, "camadas/Licenciamentos")
+        lic = checar_intersecoes(ponto, "camadas/licenciamento")
         for nome, status in lic.items():
             st.write(f"**{nome}:** {status}")
 
         st.subheader("⛔ Restrições Ambientais")
-        res = checar_intersecoes(ponto, "camadas/Restrições ambientais")
+        res = checar_intersecoes(ponto, "camadas/restricao")
         for nome, status in res.items():
             st.write(f"**{nome}:** {status}")
 
