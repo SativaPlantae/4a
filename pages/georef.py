@@ -36,7 +36,7 @@ if st.button("🔍 Verificar Localização"):
         st.markdown(f"**📌 Coordenada UTM (SIRGAS 2000 / zona 22S):** {utm_x}, {utm_y}")
         ponto = gpd.GeoDataFrame(geometry=[Point(utm_x, utm_y)], crs="EPSG:31982")
 
-        # Localização Administrativa com atributos
+        # Localização Administrativa com atributos (sem fundo colorido)
         st.subheader("📍 Localização Administrativa")
         atributos_admin = {
             "estados": "NM_UF",
@@ -53,9 +53,9 @@ if st.button("🔍 Verificar Localização"):
                     intersecao = gdf[gdf.intersects(ponto.geometry.iloc[0])]
                     if not intersecao.empty:
                         valor = intersecao.iloc[0][coluna]
-                        st.success(f"**{camada}:** {valor}")
+                        st.write(f"**{camada}:** {valor}")
                     else:
-                        st.error(f"**{camada}:** ❌ Não encontrado")
+                        st.write(f"**{camada}:** ❌ Não encontrado")
                 except Exception as e:
                     st.warning(f"Erro ao processar {camada}: {e}")
             else:
@@ -73,7 +73,7 @@ if st.button("🔍 Verificar Localização"):
         for nome, status in res.items():
             st.write(f"**{nome}:** {status}")
 
-        # Conclusão
+        # Conclusão com uso de cores
         st.subheader("📝 Conclusão")
         if any(v == "✅ Sim" for v in res.values()):
             st.error("A coordenada está em uma área com restrição ambiental. Intervenção não permitida.")
